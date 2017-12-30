@@ -1,6 +1,7 @@
 import sys
 
 from baserl.common import *
+from baserl.graphs import heatmap_value_function
 
 RIGHT = 'R'
 LEFT = 'L'
@@ -15,24 +16,29 @@ class GridWorld:
             [' ', ' ', ' ', ' '],
             [' ', ' ', ' ', 'T']]
 
+
     def states(self):
         """
         Returns all the possible states.
         """
         return  [(x, y) for x in range(len(self.grid_)) for y in range(len(self.grid_[0]))]
-    
+
+
     def actions(self, state):
         """
         What actions can one take from a given state.
         """
         return (UP, DOWN, RIGHT, LEFT)
 
+
     def is_terminal(self, state):
         return self.grid_[state[0]][state[1]] == 'T'
-    
+
+
     def gamma(self):
         # Undiscounted
         return 1.0
+
 
     def transitions(self, state, action):
         """
@@ -64,13 +70,13 @@ class GridWorld:
             else:
                 # stay in the same state
                 return [((state, -1), 1.0)]
-            
+
+
     def print_value(self, v, states):
-        for x in range(len(self.grid_)):
-            for y in range(len(self.grid_[0])):
-                sys.stdout.write("%.2f " % v[(x, y)])
-            sys.stdout.write("\n")
-            
+        # If one wants to print out the values: heatmap_value_function(v, print_format="%.2f ")
+        heatmap_value_function(v)
+
+
     def print_policy(self, policy, states, actions):
         for x in range(len(self.grid_)):
             for y in range(len(self.grid_[0])):

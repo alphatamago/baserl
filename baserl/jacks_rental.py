@@ -1,6 +1,11 @@
 import sys
 
 from baserl.common import *
+from baserl.graphs import heatmap_value_function
+
+UPPER_BOUND_POISSON = 10
+
+MIN_PROB = 1e-20
 
 class JacksRental:
     def __init__(self, 
@@ -32,6 +37,13 @@ class JacksRental:
         
         self.precomputed_transitions_per_location_ = None
 
+        self.global_transitions_hits_ = 0
+        self.global_transitions_misses_ = 0
+
+    def report_stats(self):
+        print("global_transitions_hits:", self.global_transitions_hits_)
+        print("global_transitions_misses:", self.global_transitions_misses_)
+        
 
     def states(self):
         """
@@ -56,7 +68,7 @@ class JacksRental:
         return 0.9
     
 
-    def transitions(self, state, action):
+    def transitions(self, evening_state, action):
         """
         (state, action) -> [(new_state, reward, prob)]
         state = (num_0, num_1) = counts at the two locations at the end of day
@@ -66,49 +78,46 @@ class JacksRental:
         """
 
         if self.precomputed_transitions_per_location_ is None:
+            print("populate_precomputed_transitions_per_location started...")
+            start_time = time.time()
             self.populate_precomputed_transitions_per_location_() 
-        
-        assert type(state) == tuple and len(state) == 2
-        assert state[0] >= 0 and state[0] <= self.max_cars_ and state[1] >= 0 and state[1] <= self.max_cars_
+            print("populate_precomputed_transitions_per_location done in time:", time.time() - start_time)
+            
+        assert type(evening_state) == tuple and len(evening_state) == 2
+        assert evening_state[0] >= 0 and evening_state[0] <= self.max_cars_ and evening_state[1] >= 0 and evening_state[1] <= self.max_cars_
         assert action >= -self.max_moves_ and self.max_moves_ <= self.max_moves_
-
-        if (state, action) in self.global_transitions_:
-            return list(self.global_transitions_[(state, action)].items())
-
+        
         assert len(self.precomputed_transitions_per_location_[0]) > 0
         assert len(self.precomputed_transitions_per_location_[1]) > 0
-        # print(len(transitions_per_location[0]), len(transitions_per_location[1]))
 
-        (state_0, state_1), _ = self.move_cars_(state, action)
+        state, _ = self.move_cars_(evening_state, action)
 
-        self.global_transitions_[(state, action)] = {}
-        sum_probs = 0
+        if state in self.global_transitions_:
+            self.global_transitions_hits_ += 1
+            return list(self.global_transitions_[state].items())
+        self.global_transitions_misses_ += 1
+        self.global_transitions_[state] = {}
+
         for (num_rentals_0, num_returns_0, prob_0) in self.precomputed_transitions_per_location_[0]:
             assert prob_0 > 0
-            num_rentals_0 = min(num_rentals_0, state_0)
+            num_rentals_0 = min(num_rentals_0, state[0])
             for (num_rentals_1, num_returns_1, prob_1) in self.precomputed_transitions_per_location_[1]:
                 assert prob_1 > 0
-                sum_probs += prob_0 * prob_1
-                num_rentals_1 = min(num_rentals_1, state_1)
+                num_rentals_1 = min(num_rentals_1, state[1])
                 assert (num_rentals_0 >= 0 and num_rentals_0 <= self.max_cars_ and num_rentals_1 >= 0 and 
                         num_rentals_1 <= self.max_cars_)
                 assert (num_returns_0 >= 0 and num_returns_0 <= self.max_cars_ and num_returns_1 >= 0 and 
                         num_returns_1 <= self.max_cars_)
                 reward = (num_rentals_0 + num_rentals_1) * self.rental_revenue_per_car_ - abs(action) * self.moving_cost_per_car_
 
-                outcome = (((self.adjust_state_(state_0, num_rentals_0, num_returns_0),
-                         self.adjust_state_(state_1, num_rentals_1, num_returns_1)), reward), prob_0*prob_1)
-                if outcome[0] not in self.global_transitions_[(state, action)]:
-                    self.global_transitions_[(state, action)][outcome[0]] = 0
-                self.global_transitions_[(state, action)][outcome[0]] += outcome[1]
+                outcome = (((self.adjust_state_(state[0], num_rentals_0, num_returns_0),
+                         self.adjust_state_(state[1], num_rentals_1, num_returns_1)), reward), prob_0*prob_1)
+                if outcome[0] not in self.global_transitions_[state]:
+                    self.global_transitions_[state][outcome[0]] = 0
+                self.global_transitions_[state][outcome[0]] += outcome[1]
 
-        result = list(self.global_transitions_[(state, action)].items())
+        result = list(self.global_transitions_[state].items())
         sum_vals = sum([v for _, v in result])
-        """
-        if sum_probs != sum_vals:
-            print (sum_probs, sum_vals)
-            assert (False)
-        """
         if abs(sum_vals-1.0) >= 0.01:
             print ('expected sum probs 1, got:', sum_vals, 'state:', state, 'action:', action)
             assert(False)
@@ -116,10 +125,9 @@ class JacksRental:
 
 
     def print_value(self, v, states):
-        for x in range(self.max_cars_):
-            for y in range(self.max_cars_):
-                sys.stdout.write("%3.2f " % v[(x, y)])
-            sys.stdout.write("\n")
+        # If one wants to print out the values: heatmap_value_function(v, print_format="%3.2f ")
+        heatmap_value_function(v)
+
             
     def print_policy(self, policy, states, actions):
         for x in range(self.max_cars_):
@@ -134,22 +142,58 @@ class JacksRental:
             sys.stdout.write("\n")
 
 
+    def expected_reward_evaluator(self, v, evening_state, action, gamma):
+        assert(False)
+        state, _ = self.move_cars_(evening_state, action)
+
+        expected_reward = 0
+        for num_rentals_0 in range(state[0] + 1):
+            p_rental_0 = self.poisson_pmf_(mu=self.expected_daily_rentals_[0], k=num_rentals_0)
+            if p_rental_0 < MIN_PROB:
+                continue
+            for num_returns_0 in range(UPPER_BOUND_POISSON + 1):
+                p_return_0 = self.poisson_pmf_(mu=self.expected_daily_returns_[0], k=num_returns_0)
+                if p_return_0 < MIN_PROB:
+                    continue
+                for num_rentals_1 in range(state[0] + 1):
+                    p_rental_1 = self.poisson_pmf_(mu=self.expected_daily_rentals_[1], k=num_rentals_1)
+                    if p_rental_1 < MIN_PROB:
+                        continue
+                    for num_returns_1 in range(UPPER_BOUND_POISSON + 1):
+                        p_return_1 = self.poisson_pmf_(mu=self.expected_daily_returns_[1], k=num_returns_1)
+                        if p_return_1 < MIN_PROB:
+                            continue
+                        prob = p_rental_0 * p_return_0 * p_rental_1 * p_return_1
+                        if prob < MIN_PROB:
+                            continue
+                        # print(prob, p_rental_0, p_return_0, p_rental_1, p_return_1)
+                        reward = (num_rentals_0 + num_rentals_1) * self.rental_revenue_per_car_ - abs(action) * self.moving_cost_per_car_
+                        expected_reward += prob * (reward + gamma * v[state])
+                        # print(reward, expected_reward)
+        return expected_reward
+                    
+
     def populate_precomputed_transitions_per_location_(self):
         assert self.precomputed_transitions_per_location_ is None
         self.precomputed_transitions_per_location_ = [[], []]
         # Compute for the two locations
         for i in [0, 1]:
-            for num_rentals in range(self.max_cars_ + 1):
-                p_rental = self.poisson_pmf_(mu=self.expected_daily_rentals_[i], k=num_rentals)
-                for num_returns in range(self.max_cars_ + 1):
-                    p_return = self.poisson_pmf_(mu=self.expected_daily_returns_[i], k=num_returns)
-                    self.precomputed_transitions_per_location_[i].append((num_rentals, num_returns, p_rental * p_return))
-                    
+            for num_rentals in range(min(self.max_cars_, UPPER_BOUND_POISSON) + 1):
+                p_rental = self.poisson_pmf_(
+                    mu=self.expected_daily_rentals_[i], k=num_rentals)
+                for num_returns in range(min(self.max_cars_, UPPER_BOUND_POISSON) + 1):
+                    p_return = self.poisson_pmf_(
+                        mu=self.expected_daily_returns_[i], k=num_returns)
+                    self.precomputed_transitions_per_location_[i].append((
+                        num_rentals, num_returns, p_rental * p_return))
+
+
     def adjust_state_(self, count, rentals, returns):
         assert rentals >= 0 and rentals <= count
         assert returns >= 0
         return min(max(count - rentals + returns, 0), self.max_cars_)
-    
+
+
     def poisson_pmf_(self, mu, k):
         if mu not in self.poisson_cache_:
             self.poisson_cache_[mu] = {}
