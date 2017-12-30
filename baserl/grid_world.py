@@ -1,19 +1,32 @@
 import sys
 
 from baserl.common import *
+from baserl.mdp_base import MDPBase
 
 RIGHT = 'R'
 LEFT = 'L'
 UP = 'U'
 DOWN = 'D'
 
-class GridWorld:
+class GridWorld(MDPBase):
+    """
+    This is a 2-D environemnt, with moves between adjacent cells horizontally
+    or vertically.
+    When attempted to move outside, nothing happens.
+    Each transition costs 1 unit (or -1 reward). When any of the terminal
+    states is reached, the episode stops - so the goal is to reach a terminal
+    state as soon as possible, to minimize the losses.
+
+    This is modeled as an undiscounted episodic MDP.
+    """
+
     def __init__(self):
         self.grid_ = [
             ['T', ' ', ' ', ' '],
             [' ', ' ', ' ', ' '],
             [' ', ' ', ' ', ' '],
             [' ', ' ', ' ', 'T']]
+
 
     def states(self):
         """

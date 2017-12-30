@@ -33,7 +33,8 @@ def compute_action_value(v, state_action_transitions, gamma):
 def compute_state_value(state, v, policy, transitions, gamma):
     sum_v = 0
     for action, pi_a_s in policy[state].items():
-        sum_v += (pi_a_s * compute_action_value(v, transitions(state, action), gamma))
+        sum_v += (pi_a_s * compute_action_value(v, transitions(state, action),
+                                                gamma))
     return sum_v
 
 
@@ -50,15 +51,16 @@ def make_greeedy_policy_from_v(v, states, actions, transitions, gamma):
             policy[state][action] = val
             if max_v is None or max_v <= val:
                 max_v = val
-        # Find all actions that have the highest value - there can be more than one
+        # Find all actions that have the highest value - there can be more than
+        # one
         num_best_actions = 0
         # Going over actions once to count how many best actions are there
         for action, val in policy[state].items():
             if abs(val - max_v) < TOLERANCE_CMP_VALUES:
                 num_best_actions += 1
         assert num_best_actions > 0
-        # Going over actions a 2nd time to share uniform probability among best actions,
-        # and zero for the sub-optimal ones
+        # Going over actions a 2nd time to share uniform probability among best
+        # actions, and zero for the sub-optimal ones
         for action, val in policy[state].items():
             if abs(val - max_v) < TOLERANCE_CMP_VALUES:
                 policy[state][action] = 1.0 / num_best_actions
@@ -68,7 +70,13 @@ def make_greeedy_policy_from_v(v, states, actions, transitions, gamma):
     return policy
 
 
-def iterative_policy_evaluation(policy, theta, states, is_terminal, actions, transitions, gamma,
+def iterative_policy_evaluation(policy,
+                                theta,
+                                states,
+                                is_terminal,
+                                actions,
+                                transitions,
+                                gamma,
                                 in_place=True,
                                 max_iter=1000,
                                 print_value=None,
@@ -76,11 +84,14 @@ def iterative_policy_evaluation(policy, theta, states, is_terminal, actions, tra
                                 print_every_n=1,
                                 verbose=False):
     """
-    This implements the algorithm with the same name from Sutton's Reinforcement Learning book, 2nd edition, page 61
+    This implements the algorithm with the same name from Sutton's Reinforcement
+    Learning book, 2nd edition, page 61
     
-    max_iter: not part of the original algorithm: it is meant as a safety-guard to prevent it running for too long
+    max_iter: not part of the original algorithm: it is meant as a safety-guard
+    to prevent it running for too long
     
-    print_value and print_policy: optional functions that can be useful to visualize the progress
+    print_value and print_policy: optional functions that can be useful to
+    visualize the progress
     print_every_n: the frequency of calling print_value and print_policy
     """
     v = dict([(s, 0) for s in states])
@@ -93,12 +104,14 @@ def iterative_policy_evaluation(policy, theta, states, is_terminal, actions, tra
         print()
     if print_policy is not None:
         print("Initial greedy policy:")
-        print_policy(make_greeedy_policy_from_v(v, states, actions, transitions, gamma), states, actions)
+        print_policy(make_greeedy_policy_from_v(v, states, actions, transitions,
+                                                gamma), states, actions)
         print()
 
     while delta >= theta:
         if num_iter > max_iter:
-            print ('Stopped early due to num_iter > max_iter:', num_iter, max_iter)
+            print ('Stopped early due to num_iter > max_iter:', num_iter,
+                   max_iter)
             break
         delta = 0
         num_iter += 1
@@ -109,7 +122,8 @@ def iterative_policy_evaluation(policy, theta, states, is_terminal, actions, tra
         for state in states:
             if is_terminal(state): continue
             val = v[state]
-            v[state] = compute_state_value(state, old_v, policy, transitions, gamma)
+            v[state] = compute_state_value(state, old_v, policy, transitions,
+                                           gamma)
             delta = max(delta, abs(val-v[state]))
         if num_iter % print_every_n == 0:
             if print_value is not None:
@@ -118,17 +132,22 @@ def iterative_policy_evaluation(policy, theta, states, is_terminal, actions, tra
                 print()
             if print_policy is not None:
                 print("greedy policy at iteration", num_iter)
-                print_policy(make_greeedy_policy_from_v(v, states, actions, transitions, gamma), states, actions)
+                print_policy(make_greeedy_policy_from_v(v, states, actions,
+                                                        transitions, gamma),
+                             states, actions)
                 print()
         if verbose:
-            print("iterative_policy_evaluation: num iter=", num_iter, "delta=", delta)
+            print("iterative_policy_evaluation: num iter=", num_iter, "delta=",
+                  delta)
         
     if print_value is not None:
         print("Final value function after #iters =", num_iter)
         print_value(v, states)
     if print_policy is not None:
         print("Final greedy policy after #iters =", num_iter)
-        print_policy(make_greeedy_policy_from_v(v, states, actions, transitions, gamma), states, actions)
+        print_policy(make_greeedy_policy_from_v(v, states, actions, transitions,
+                                                gamma), states, actions)
+    print("iterative_policy_evaluation num_iter:", num_iter)
     return v
 
 def policy_iteration(states, is_terminal, actions, transitions, gamma, 
@@ -138,11 +157,14 @@ def policy_iteration(states, is_terminal, actions, transitions, gamma,
                      print_value=None,
                      print_policy=None):
     """
-    Implementing "Policy Iteration using iterative policy evaluation" (page 65 from Sutton's Reinforcement Learning, 2nd ed)
+    Implementing "Policy Iteration using iterative policy evaluation" (page 65
+    from Sutton's Reinforcement Learning, 2nd ed)
     
-    Given the definition of a MDP (states, is_terminal, actions, transition probabilities p, gamma),
-    we try to find the best deterministic policy to pick actions in given states.
-    policy_evaluator is a function used to compute value functions for a given policy.    
+    Given the definition of a MDP (states, is_terminal, actions, transition
+    probabilities p, gamma), we try to find the best deterministic policy to pick
+    actions in given states.
+    policy_evaluator is a function used to compute value functions for a given
+    policy.    
     """
     if initial_policy is None:
         initial_policy = make_random_policy(states, actions)
@@ -164,20 +186,31 @@ def policy_iteration(states, is_terminal, actions, transitions, gamma,
             transitions=transitions,
             policy=current_policy,
             gamma=gamma)
+
+        print ("mean value:", np.mean([v for v in new_v.values()]))
         
         current_v = new_v
 
-        updated_policy = make_greeedy_policy_from_v(current_v, states, actions, transitions, gamma)
+        updated_policy = make_greeedy_policy_from_v(current_v, states, actions,
+                                                    transitions, gamma)
         
         # Compare updated_policy with current_policy
         is_policy_stable = True
+        # Counting the number of states that changed policy
+        num_unstable_states = 0
         for state in states:
+            """ TODO for faster speed, sacrificing num_unstable_states info
             if not is_policy_stable:
                 break
+            """
             for action, prob in current_policy[state].items():
-                if abs(updated_policy[state][action] - prob) > TOLERANCE_CMP_VALUES:
+                 if (abs(updated_policy[state][action] - prob) >
+                 TOLERANCE_CMP_VALUES):
                     is_policy_stable = False
+                    num_unstable_states += 1
                     break
+
+        print ("states changed policy:", num_unstable_states)
 
         # Update the current policy to the improved one
         current_policy = updated_policy
@@ -195,5 +228,43 @@ def policy_iteration(states, is_terminal, actions, transitions, gamma,
 
 def make_iterative_policy_evaluator(theta, max_iter):
     def f(states, is_terminal, actions, transitions, policy, gamma):
-        return iterative_policy_evaluation(policy, theta, states, is_terminal, actions, transitions, gamma, max_iter=max_iter)
+        return iterative_policy_evaluation(policy, theta, states, is_terminal,
+                                           actions, transitions, gamma,
+                                           max_iter=max_iter)
     return f
+
+
+def chop_prob_distribution(prob_dist, threshold, prob_ix):
+    """
+    prob_dist is a list of (..., prob) tuples, where prob_ix specifies the
+    position of prob in the tuple
+    """
+    assert prob_ix >= 0
+    prob_key=lambda x: x[prob_ix]
+    sorted_prob_dist = sorted(prob_dist, key=prob_key, reverse=True)
+    assert threshold > 0
+    if type(threshold) == float:
+        assert threshold <= 1.0
+    else:
+        assert type(threshold) == int
+    
+    if type(threshold) == float:
+        cut_i = None
+        sum_values = sum([prob_key(k) for k in prob_dist])
+        cumsum = 0
+        for count, item in enumerate(prob_dist):
+            prob = prob_key(item)
+            cumsum += (prob * 1.0 / sum_values)
+            if cut_i is None and cumsum >= threshold:
+                cut_i = count
+    else:
+        # Top-k
+        cut_i = threshold-1
+
+    result = sorted_prob_dist[:cut_i+1]
+
+    # Redistribute prob mass to survivors
+    sum_kept = sum([prob_key(k) for k in result])
+    sum_dropped = sum([prob_key(k) for k in sorted_prob_dist[cut_i+1:]])
+    return [(t[:prob_ix] + (t[prob_ix] + t[prob_ix] * sum_dropped / sum_kept,) +
+             t[prob_ix + 1:]) for t in result]
