@@ -1,6 +1,7 @@
 import sys
 
 from baserl.common import *
+from baserl.graphs import *
 from baserl.mdp_base import MDPBase
 
 class JacksRental(MDPBase):
@@ -181,10 +182,11 @@ class JacksRental(MDPBase):
 
 
     def print_value(self, v):
-        for x in range(self.max_cars_):
-            for y in range(self.max_cars_):
-                sys.stdout.write("%3.2f " % v[(x, y)])
-            sys.stdout.write("\n")
+        heatmap_value_function(v)
+        #for x in range(self.max_cars_):
+        #    for y in range(self.max_cars_):
+        #        sys.stdout.write("%3.2f " % v[(x, y)])
+        #    sys.stdout.write("\n")
 
 
     def print_policy(self, policy):
@@ -242,11 +244,11 @@ class JacksRental(MDPBase):
             len_before = len(self.precomputed_transitions_per_location_[i])
             self.precomputed_transitions_per_location_[i] = chop_prob_distribution(self.precomputed_transitions_per_location_[i], self.transitions_prob_threshold_, 2)
             len_after = len(self.precomputed_transitions_per_location_[i])
-            print("location", i, "len before prob chop:", len_before, "after:",
-                  len_after, "sample top:",
-                  self.precomputed_transitions_per_location_[i][:5],
-                  "sample bottom:",
-                  self.precomputed_transitions_per_location_[i][-5:])
+            #print("location", i, "len before prob chop:", len_before, "after:",
+            #      len_after, "sample top:",
+            #      self.precomputed_transitions_per_location_[i][:5],
+            #      "sample bottom:",
+            #      self.precomputed_transitions_per_location_[i][-5:])
 
 
     def adjust_state_(self, count, rentals, returns):
