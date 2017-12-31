@@ -47,11 +47,11 @@ class MDPBase:
         raise NotImplementedException()
 
 
-    def print_value(self, v, states):
+    def print_value(self, v):
         raise NotImplementedException()
 
             
-    def print_policy(self, policy, states, actions):
+    def print_policy(self, policy):
         raise NotImplementedException()
 
 

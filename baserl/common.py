@@ -52,6 +52,8 @@ def make_greeedy_policy_from_v(v, states, actions, transitions, gamma):
             policy[state][action] = val
             if max_v is None or max_v <= val:
                 max_v = val
+        if max_v is None:
+            continue
         # Find all actions that have the highest value - there can be more than
         # one
         num_best_actions = 0
@@ -62,11 +64,16 @@ def make_greeedy_policy_from_v(v, states, actions, transitions, gamma):
         assert num_best_actions > 0
         # Going over actions a 2nd time to share uniform probability among best
         # actions, and zero for the sub-optimal ones
+        delete_actions = []
         for action, val in policy[state].items():
             if abs(val - max_v) < TOLERANCE_CMP_VALUES:
                 policy[state][action] = 1.0 / num_best_actions
             else:
-                policy[state][action] = 0
+                # TODO - is it better to just set to zero?
+                # policy[state][action] = 0
+                delete_actions.append(action)
+        for action in delete_actions:
+            del policy[state][action]
         
     return policy
 
@@ -101,12 +108,12 @@ def iterative_policy_evaluation(policy,
 
     if print_value is not None:
         print("Initial value function:")
-        print_value(v, states)
+        print_value(v)
         print()
     if print_policy is not None:
         print("Initial greedy policy:")
         print_policy(make_greeedy_policy_from_v(v, states, actions, transitions,
-                                                gamma), states, actions)
+                                                gamma))
         print()
 
     while delta >= theta:
@@ -129,13 +136,12 @@ def iterative_policy_evaluation(policy,
         if num_iter % print_every_n == 0:
             if print_value is not None:
                 print("value function at iteration", num_iter)
-                print_value(v, states)
+                print_value(v)
                 print()
             if print_policy is not None:
                 print("greedy policy at iteration", num_iter)
                 print_policy(make_greeedy_policy_from_v(v, states, actions,
-                                                        transitions, gamma),
-                             states, actions)
+                                                        transitions, gamma))
                 print()
         if verbose:
             print("iterative_policy_evaluation: num iter=", num_iter, "delta=",
@@ -143,11 +149,11 @@ def iterative_policy_evaluation(policy,
         
     if print_value is not None:
         print("Final value function after #iters =", num_iter)
-        print_value(v, states)
+        print_value(v)
     if print_policy is not None:
         print("Final greedy policy after #iters =", num_iter)
         print_policy(make_greeedy_policy_from_v(v, states, actions, transitions,
-                                                gamma), states, actions)
+                                                gamma))
     print("iterative_policy_evaluation num_iter:", num_iter)
     return v
 
@@ -206,7 +212,8 @@ def policy_iteration(states, is_terminal, actions, transitions, gamma,
                 break
             """
             for action, prob in current_policy[state].items():
-                 if (abs(updated_policy[state][action] - prob) >
+                 if (action not in updated_policy[state]) or (abs(
+                         updated_policy[state][action] - prob) >
                  TOLERANCE_CMP_VALUES):
                     is_policy_stable = False
                     num_unstable_states += 1
@@ -217,14 +224,15 @@ def policy_iteration(states, is_terminal, actions, transitions, gamma,
         # Update the current policy to the improved one
         current_policy = updated_policy
 
-        if print_value is not None:
-                print("value function at iteration", num_iter)
-                print_value(current_v, states)
-                print()
-        if print_policy is not None:
-                print("greedy policy at iteration", num_iter)
-                print_policy(current_policy, states, actions)
-                print()
+    if print_value is not None:
+        print("value function at iteration", num_iter)
+        print_value(current_v)
+        print()
+
+    if print_policy is not None:
+        print("greedy policy at iteration", num_iter)
+        print_policy(current_policy)
+        print()
                 
     return current_policy, current_v
 
@@ -232,7 +240,8 @@ def policy_iteration(states, is_terminal, actions, transitions, gamma,
 def value_iteration(states, is_terminal, actions, transitions, gamma, 
                      delta_threshold, max_iter,
                      print_value=None,
-                     print_policy=None):
+                     print_policy=None,
+                     v_history=None):
     """
     Implementing "Value Iteration" (page 67 from Sutton's Reinforcement Learning,
     2nd ed)
@@ -268,18 +277,21 @@ def value_iteration(states, is_terminal, actions, transitions, gamma,
             v[state] = max_v
             delta = max(delta, abs(val - v[state]))
 
+        if v_history is not None:
+            v_history.append((copy.deepcopy(v), delta))
         print("delta at iteration:", num_iter, delta)
-        if not print_value is None:
-            print("value function at iteration", num_iter)
-            print_value(v, states)
-            print()
     
     # output a deterministic policy
     policy = make_greeedy_policy_from_v(v, states, actions, transitions, gamma)
 
+    if not print_value is None:
+        print("value function at iteration", num_iter)
+        print_value(v)
+        print()
+
     if print_policy is not None:
         print("policy:")
-        print_policy(policy, states, actions)
+        print_policy(policy)
         print()
     return policy, v
 

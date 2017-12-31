@@ -180,14 +180,14 @@ class JacksRental(MDPBase):
                   self.moving_cost_per_car_), k[1]) for k in result]
 
 
-    def print_value(self, v, states):
+    def print_value(self, v):
         for x in range(self.max_cars_):
             for y in range(self.max_cars_):
                 sys.stdout.write("%3.2f " % v[(x, y)])
             sys.stdout.write("\n")
 
 
-    def print_policy(self, policy, states, actions):
+    def print_policy(self, policy):
         for x in range(self.max_cars_):
             for y in range(self.max_cars_):
                 max_prob = None
