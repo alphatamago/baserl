@@ -20,6 +20,7 @@ def make_random_policy(states, actions):
             random_policy[state][action] = (1.0 / len(possible_actions))
     return random_policy
 
+
 def compute_action_value(v, state_action_transitions, gamma):
     sum_pr = 0
     for ((next_state, reward), p_next) in state_action_transitions:
@@ -150,6 +151,7 @@ def iterative_policy_evaluation(policy,
     print("iterative_policy_evaluation num_iter:", num_iter)
     return v
 
+
 def policy_iteration(states, is_terminal, actions, transitions, gamma, 
                      policy_evaluator,
                      delta_policy_improv, max_iter_policy_improv, 
@@ -226,6 +228,62 @@ def policy_iteration(states, is_terminal, actions, transitions, gamma,
                 
     return current_policy, current_v
 
+
+def value_iteration(states, is_terminal, actions, transitions, gamma, 
+                     delta_threshold, max_iter,
+                     print_value=None,
+                     print_policy=None):
+    """
+    Implementing "Value Iteration" (page 67 from Sutton's Reinforcement Learning,
+    2nd ed)
+    
+    Given the definition of a MDP (states, is_terminal, actions, transition
+    probabilities p, gamma), we try to find the best deterministic policy to pick
+    actions in given states.
+    """
+
+    v = {}
+    for s in states:
+        v[s] = 0
+
+    num_iter = 0
+    delta = delta_threshold
+    while delta >= delta_threshold:
+        if num_iter > max_iter:
+            print("Stopping early after #iterations:", num_iter)
+            break
+        num_iter += 1
+        delta = 0
+        for state in states:
+            if is_terminal(state): continue
+            val = v[state]
+            max_a = None
+            max_v = None
+            for action in actions(state):
+                new_v = sum([p * (r + gamma * v[next_s]) for (next_s, r), p in
+                             transitions(state, action)])
+                if (max_v is None) or (new_v > max_v):
+                    max_v = new_v
+                    max_a = action
+            v[state] = max_v
+            delta = max(delta, abs(val - v[state]))
+
+        print("delta at iteration:", num_iter, delta)
+        if not print_value is None:
+            print("value function at iteration", num_iter)
+            print_value(v, states)
+            print()
+    
+    # output a deterministic policy
+    policy = make_greeedy_policy_from_v(v, states, actions, transitions, gamma)
+
+    if print_policy is not None:
+        print("policy:")
+        print_policy(policy, states, actions)
+        print()
+    return policy, v
+
+    
 def make_iterative_policy_evaluator(theta, max_iter):
     def f(states, is_terminal, actions, transitions, policy, gamma):
         return iterative_policy_evaluation(policy, theta, states, is_terminal,
