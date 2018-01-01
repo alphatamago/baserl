@@ -143,7 +143,6 @@ def iterative_policy_evaluation(policy,
                 print_policy(make_greeedy_policy_from_v(v, states, actions,
                                                         transitions, gamma))
                 print()
-        if verbose:
             print("iterative_policy_evaluation: num iter=", num_iter, "delta=",
                   delta)
         
