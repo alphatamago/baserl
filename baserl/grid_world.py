@@ -80,7 +80,7 @@ class GridWorld(MDPBase):
     def print_value(self, v):
         for x in range(len(self.grid_)):
             for y in range(len(self.grid_[0])):
-                sys.stdout.write("%.2f " % v[(x, y)])
+                sys.stdout.write("%6.2f " % v[(x, y)])
             sys.stdout.write("\n")
 
 

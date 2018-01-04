@@ -11,6 +11,24 @@ from scipy.stats import norm
 
 TOLERANCE_CMP_VALUES = 0.000001
 
+
+def random_sample(item_prob_pair_list):
+    assert type(item_prob_pair_list) == list
+    assert item_prob_pair_list
+    threshold = 0
+    rand = random.uniform(0, sum([v[1] for v in item_prob_pair_list]))
+    selected_action = None
+    for (a, p_a) in item_prob_pair_list:
+        assert p_a >= 0
+        if p_a == 0:
+            continue
+        threshold += p_a
+        if rand <= threshold:
+            return a
+    print ("Unexpected: ", list(item_prob_pair_list))
+    assert(False)
+
+
 def make_random_policy(states, actions):
     random_policy = {}
     for state in states:
