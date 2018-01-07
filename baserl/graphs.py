@@ -47,6 +47,7 @@ def heatmap_value_function(value_function,
 
 def heatmap_policy(policy,
                    print_format=None,
+                   title="policy",
                    default_action_if_missing=0,
                    mapping_key_func=lambda k: k,
                    inv_mapping_key_func=lambda k: k,
@@ -82,7 +83,7 @@ def heatmap_policy(policy,
             sys.stdout.write("\n")
     plt.imshow(a, cmap=plt.cm.rainbow, interpolation='nearest')
     plt.colorbar()
-    plt.title('policy')
+    plt.title(title)
     plt.show()
 
 
