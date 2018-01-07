@@ -81,7 +81,7 @@ class BlackjackEpisodeGenerator:
     result in not trying certain actions at all in certain states.
     """
     
-    def __init__(self, with_exploring_starts, verbose):
+    def __init__(self, with_exploring_starts, verbose=False):
         self.with_exploring_starts_ = with_exploring_starts
         self.verbose_ = verbose
 

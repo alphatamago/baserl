@@ -3,7 +3,7 @@ import random
 
 from collections import defaultdict
 
-from baserl.common import random_sample
+from baserl.common import *
 
 def monte_carlo_policy_evaluation(every_visit,
                                   policy,
@@ -15,10 +15,11 @@ def monte_carlo_policy_evaluation(every_visit,
     """
     Implements both "First-visit" and "Every-visit" versions of Monte Carlo
     prediction for the value function of a given policy.
-    The implementation follows the algorithm as described in Sutton's Reinforcement
-    Learning book, 2nd edition, page 76.
+    The implementation follows the algorithm as described in Sutton's
+    Reinforcement Learning book, 2nd edition, page 76.
 
-    @every_visit: if True, runs the "Every-visit" version, else runs "First-visit".
+    @every_visit: if True, runs the "Every-visit" version, else runs
+    "First-visit".
 
     The algorithm doesn't have any specific termination condition, therefore
     here we use num_episodes to control the run time.
@@ -143,3 +144,112 @@ class ModelBasedEpisodeGenerator:
             episode.append((current_s, selected_action, reward))
             current_s = new_s
         return episode
+
+
+def on_policy_monte_carlo_control(initial_policy, gamma, 
+                                  episode_generator,
+                                  num_episodes,
+                                  epsilon=0):
+    """
+    This function can be used either to run "Monte Carlo ES (Exploring Starts" as
+    described in Sutton's RL book, 2nd ed, page 81, as well as to run "On Policy
+    first-visit MC control (for epsilon-soft policies)" as described on page 83.
+
+    To run the Exploring Starts version, set epsilon to zero (the default value)
+    and provide an episode_generator that has the exploring-starts property.
+
+    To run the Epsilon-Soft Policies version, one can use any episode_generator
+    but make sure to set epsilon to a non-zero value.
+    """
+    assert num_episodes > 0
+    current_policy = copy.deepcopy(initial_policy)
+
+    # q[state][action] = (sum_returns, num_returns) - in order to compute average
+    # returns from taking given action in given state
+    q = {}
+    num_non_empty_episodes = 0
+    num_empty_episodes = 0
+    measured_initial_policy = None
+    while num_non_empty_episodes < num_episodes:
+        episode_states = set()
+        episode = episode_generator.generate(current_policy, start_state=None,
+                                             start_action=None)
+
+        # The reason for keeping track of gamma_power separately per (s,a) pair is
+        # to discount separately from each first encounter of a (s,a) pair in an
+        # episode. A particular (s,a) can occur first time in the middle of the
+        # episode, then we start it's Q calculation with full reward, then next
+        # reward gets discounted by gamma, the one after by gamma^2, etc
+        # episode_returns[(s, a)] = sum_rewards, gamma_power
+        episode_returns = {}
+        for (state, action, reward) in episode:
+            if state not in current_policy:
+                assert(False)
+            if action not in current_policy[state]:
+                assert(False)                
+            episode_states.add(state)
+            if (state, action) not in episode_returns:
+                episode_returns[(state, action)] = (0, 0)
+            for (s, a) in episode_returns:
+                (sum_rewards, gamma_power) = episode_returns[(s, a)]
+                episode_returns[(s, a)] =  (sum_rewards  + reward *
+                                            (gamma**gamma_power), gamma_power + 1)
+                
+        if len(episode_states) == 0:
+            # This is needed for instance in blackjack - not sure what to do with
+            # the episodes that start in a terminal state, where it ends with no
+            # action
+            num_empty_episodes += 1
+            continue
+            
+        num_non_empty_episodes += 1
+
+        # Update current Q-values
+        for (state, action) in episode_returns:
+            if state not in q:
+                q[state] = {}
+            if action not in q[state]:
+                q[state][action] = (0, 0)
+            sum_values, num_values = q[state][action]
+            q[state][action] = (sum_values + episode_returns[(state, action)][0],
+                                num_values + 1)
+
+        # Update current policy
+        assert (len(episode_states) > 0)
+        for s in episode_states:
+            # Find the highest value
+            max_v = None
+            for a, (sum_vals, num_vals) in q[s].items():
+                v = 1.0 * sum_vals / num_vals
+                if max_v is None or max_v <= v:
+                    max_v = v
+            
+            # Find all actions that have the highest value - there can be more
+            # than one
+            max_value_actions = set()
+            for a, (sum_vals, num_vals) in q[s].items():
+                v = 1.0 * sum_vals / num_vals
+                # Since we use floating points, we use tolerance comparisons
+                if abs(v - max_v) < TOLERANCE_CMP_VALUES:
+                    max_value_actions.add(a)
+                    
+            assert len(max_value_actions) > 0
+
+            # Assign values to the actions
+            possible_actions = current_policy[s].keys()
+            assert len(possible_actions) > 0
+            sum_probs = 0
+            for a in possible_actions:
+                if a in max_value_actions:
+                    prob = ((1.0 - epsilon)/len(max_value_actions) +
+                            epsilon/len(possible_actions))
+                    current_policy[s][a] = prob
+                    sum_probs += prob
+                else:
+                    prob = epsilon/len(possible_actions)
+                    current_policy[s][a] = prob
+                    sum_probs += prob
+            # Check the probability distribution assumption
+            assert abs(sum_probs - 1.0) < TOLERANCE_CMP_VALUES
+
+    return current_policy, q
