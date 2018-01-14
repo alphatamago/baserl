@@ -124,11 +124,13 @@ def test_blackjack_monte_carlo_first_visit_policy_evaluation():
     episode_generator = BlackjackEpisodeGenerator(with_exploring_starts=False)
     simple_policy = mdp.make_simple_blackjack_player_policy()
     start_time = time.time()
+    v_history = []
     v = monte_carlo_policy_evaluation(every_visit=False,
                                       policy=simple_policy,
                                       gamma=mdp.gamma(),
                                       episode_generator=episode_generator,
-                                      num_episodes=1000)
+                                      num_episodes=100000,
+                                      v_history=v_history)
     print("Done in time:", time.time()-start_time)    
 
 
@@ -167,6 +169,9 @@ def test_blackjack_monte_carlo_control_epsilon_soft():
 if __name__ ==  "__main__":
     random.seed(42)
 
+    test_blackjack_monte_carlo_first_visit_policy_evaluation()
+    print()
+    
     test_grid_world_policy_iteration()
     print()
 
@@ -185,9 +190,6 @@ if __name__ ==  "__main__":
     print()
 
     test_gambler_value_iteration()
-    print()
-
-    test_blackjack_monte_carlo_first_visit_policy_evaluation()
     print()
 
     test_blackjack_monte_carlo_control_exploring_starts()

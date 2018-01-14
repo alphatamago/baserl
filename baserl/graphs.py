@@ -132,3 +132,111 @@ def wireframe_value_function(value_function,
     ax.view_init(view_elev_angle, view_azim_angle)
     plt.title(title)
     plt.show()
+
+def heatmap_q_value(q, missing_value, print_format=None,
+                           mapping_key_func=lambda k: k,
+                           inv_mapping_key_func=lambda k: k,
+                           mapping_value_func=lambda k: k):
+    xs = set()
+    ys = set()
+    for key in q:
+        (x, y) = mapping_key_func(key)
+        xs.add(x)
+        ys.add(y)
+    minx = min(xs)
+    maxx = max(xs)
+    miny = min(ys)
+    maxy = max(ys)
+    a = np.zeros((maxx + 1 -minx, maxy + 1 - miny))
+    for x in range(minx, maxx + 1):
+        for y in range(miny, maxy + 1):
+            max_a = None
+            max_v = None
+            if inv_mapping_key_func((x, y)) not in q:
+                max_v = missing_value
+            else:
+                for action, v in q[inv_mapping_key_func((x,y))].items():
+                    v = mapping_value_func(v)
+                    if max_v is None or max_v < v:
+                        max_v = v
+                        max_a = action
+            a[x-minx,y-miny] = max_v
+            if print_format is not None:
+                sys.stdout.write(print_format.format(max_v))
+                sys.stdout.write(" ")
+        if print_format is not None:
+            sys.stdout.write("\n")
+    plt.imshow(a, cmap=plt.cm.rainbow, interpolation='nearest')
+    plt.colorbar()
+    plt.title('Q-values')
+    plt.show()
+    
+def heatmap_q_value_delta(q, missing_value, print_format=None,
+                           mapping_key_func=lambda k: k,
+                           inv_mapping_key_func=lambda k: k,
+                           mapping_value_func=lambda k: k):
+    """
+    Computes the delta between values for top two actions
+    """
+    xs = set()
+    ys = set()
+    for key in q:
+        (x, y) = mapping_key_func(key)
+        xs.add(x)
+        ys.add(y)
+    minx = min(xs)
+    maxx = max(xs)
+    miny = min(ys)
+    maxy = max(ys)
+    a = np.zeros((maxx + 1 -minx, maxy + 1 - miny))
+    for x in range(minx, maxx + 1):
+        for y in range(miny, maxy + 1):
+            sorted_actions = sorted(q[inv_mapping_key_func((x,y))].items(), key=lambda x:x[1], reverse=True)
+            first = mapping_value_func(sorted_actions[0][1])
+            second = 0
+            if len(sorted_actions) > 1:
+                second = mapping_value_func(sorted_actions[1][1])
+            val = (first - second) * 1.0 / (first+second)
+            a[x-minx,y-miny] = val
+            print(val, first, second)
+            if print_format is not None:
+                sys.stdout.write(print_format.format(max_v))
+                sys.stdout.write(" ")
+        if print_format is not None:
+            sys.stdout.write("\n")
+    plt.imshow(a, cmap=plt.cm.rainbow, interpolation='nearest')
+    plt.colorbar()
+    plt.title('Q-values')
+    plt.show()
+
+def heatmap_q_value_for_action(q, action, missing_value, print_format=None,
+                           mapping_key_func=lambda k: k,
+                           inv_mapping_key_func=lambda k: k,
+                           mapping_value_func=lambda k: k,
+                           title="Q-values"):
+    xs = set()
+    ys = set()
+    for key in q:
+        (x, y) = mapping_key_func(key)
+        xs.add(x)
+        ys.add(y)
+    minx = min(xs)
+    maxx = max(xs)
+    miny = min(ys)
+    maxy = max(ys)
+    a = np.zeros((maxx + 1 -minx, maxy + 1 - miny))
+    for x in range(minx, maxx + 1):
+        for y in range(miny, maxy + 1):
+            val = missing_value
+            if action in q[inv_mapping_key_func((x,y))]:
+                val = mapping_value_func(q[inv_mapping_key_func((x,y))][action])
+            a[x-minx,y-miny] = val
+            if print_format is not None:
+                sys.stdout.write(print_format.format(max_v))
+                sys.stdout.write(" ")
+        if print_format is not None:
+            sys.stdout.write("\n")
+    plt.imshow(a, cmap=plt.cm.rainbow, interpolation='nearest')
+    plt.colorbar()
+    plt.title(title)
+    plt.show()

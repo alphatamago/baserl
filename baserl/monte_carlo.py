@@ -5,13 +5,28 @@ from collections import defaultdict
 
 from baserl.common import *
 
+
+def select_random_legal_action(policy, state):
+    sum_p = 0
+    legal_actions = []
+    for a, p_a in policy[state].items():
+        if p_a < 0:
+            print (state, policy[state].items())
+        assert p_a >= 0
+        if p_a > 0:
+            sum_p += p_a
+            legal_actions.append((a, p_a))
+    return random_sample(legal_actions)
+
+
 def monte_carlo_policy_evaluation(every_visit,
                                   policy,
                                   gamma,
                                   episode_generator,
                                   num_episodes,
                                   verbose=False,
-                                  v_history=None):
+                                  v_history=None,
+                                  v_history_snapshots=None):
     """
     Implements both "First-visit" and "Every-visit" versions of Monte Carlo
     prediction for the value function of a given policy.
@@ -61,22 +76,10 @@ def monte_carlo_policy_evaluation(every_visit,
                 updated_count = count_vals + 1
                 episode_returns[state] = (updated_sum, updated_count)
                 v[state] = 1.0 * updated_sum / updated_count
-        if v_history is not None:
+        if (v_history is not None and v_history_snapshots is not None and
+            num_non_empty_episodes in v_history_snapshots):
             v_history.append(copy.deepcopy(v))
     return v
-
-
-def select_random_legal_action(policy, state):
-    sum_p = 0
-    legal_actions = []
-    for a, p_a in policy[state].items():
-        if p_a < 0:
-            print (state, policy[state].items())
-        assert p_a >= 0
-        if p_a > 0:
-            sum_p += p_a
-            legal_actions.append((a, p_a))
-    return random_sample(legal_actions)
 
 
 class ModelBasedEpisodeGenerator:
@@ -172,8 +175,7 @@ def on_policy_monte_carlo_control(initial_policy, gamma,
     measured_initial_policy = None
     while num_non_empty_episodes < num_episodes:
         episode_states = set()
-        episode = episode_generator.generate(current_policy, start_state=None,
-                                             start_action=None)
+        episode = episode_generator.generate(current_policy)
 
         # The reason for keeping track of gamma_power separately per (s,a) pair is
         # to discount separately from each first encounter of a (s,a) pair in an
