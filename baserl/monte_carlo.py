@@ -76,8 +76,9 @@ def monte_carlo_policy_evaluation(every_visit,
                 updated_count = count_vals + 1
                 episode_returns[state] = (updated_sum, updated_count)
                 v[state] = 1.0 * updated_sum / updated_count
-        if (v_history is not None and v_history_snapshots is not None and
-            num_non_empty_episodes in v_history_snapshots):
+        if ((v_history is not None) and
+            (v_history_snapshots is None or
+             (num_non_empty_episodes in v_history_snapshots))):
             v_history.append(copy.deepcopy(v))
     return v
 
