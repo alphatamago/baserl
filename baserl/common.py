@@ -30,6 +30,10 @@ def random_sample(item_prob_pair_list):
 
 
 def make_random_policy(states, actions):
+    """
+    states: a list
+    actions: a function that takes a state as an argument
+    """
     random_policy = {}
     for state in states:
         random_policy[state] = {}
@@ -312,7 +316,7 @@ def value_iteration(states, is_terminal, actions, transitions, gamma,
         print()
     return policy, v
 
-    
+
 def make_iterative_policy_evaluator(theta, max_iter):
     def f(states, is_terminal, actions, transitions, policy, gamma):
         return iterative_policy_evaluation(policy, theta, states, is_terminal,

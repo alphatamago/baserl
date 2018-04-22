@@ -1,3 +1,5 @@
+from collections import namedtuple
+import random
 import sys
 
 from baserl.common import *
@@ -13,6 +15,23 @@ def draw_blackjack_card():
     return card if card <= 10 else 10
 
 
+def generate_random_blackjack_state():
+    """
+    Easier way:
+    (random.randint(11, 21), random.randint(1, 10), random.random() < 0.5)
+    """
+    # Draw cards for the player
+    player_sum = 0
+    player_has_usable_ace = False
+    while player_sum < 11:
+        new_card = draw_blackjack_card()
+        if new_card == 1 and player_sum + 11 <= 21:
+            new_card = 11
+            player_has_usable_ace = True
+        player_sum += new_card
+    dealer_visible = draw_blackjack_card()
+    return (player_sum, dealer_visible, player_has_usable_ace)
+
 class BlackjackEpisodeGenerator:
     def __init__(self, with_exploring_starts, verbose=False):
         self.with_exploring_starts_ = with_exploring_starts
@@ -23,8 +42,7 @@ class BlackjackEpisodeGenerator:
 
         # Player's turn
         if start_state is None:
-            start_state = (random.randint(11, 21), random.randint(1, 10),
-                           random.random() < 0.5)
+            start_state = generate_random_blackjack_state()
             if self.verbose_:
                 print("Generated random start_state", start_state)
         else:
@@ -82,7 +100,6 @@ class BlackjackEpisodeGenerator:
                                 print("Player busted, episode:", episodes)
                             return episodes
                     else:
-                        # TODO - don't we need to add this to episodes???
                         current_state = (new_player_sum, current_state[1],
                                          current_state[2])
                         if self.verbose_:
@@ -92,19 +109,19 @@ class BlackjackEpisodeGenerator:
                 break
 
         # Dealer's turn
+        # We pretend that the dealer only has the visible card, and start
+        # playing from there.
+        dealer_has_usable_ace = False
         if start_state[1] == 1:
-            dealer_sum = 11
+            start_state = (start_state[0], 11, start_state[2])
             dealer_has_usable_ace = True
-            if self.verbose_:
-                print("dealer has usable_ace, dealer_sum=", dealer_sum)
-        else:
-            dealer_sum = start_state[1]
-            dealer_has_usable_ace = False
-            if self.verbose_:
-                print("dealer doesn't have usable_ace, dealer_sum=", dealer_sum)
-
+        dealer_sum = start_state[1]
         while dealer_sum < 17:
             new_card_value = draw_blackjack_card()
+            if new_card_value == 1:
+                if dealer_sum + 11 <= 21:
+                    new_card_value = 11
+                    dealer_has_usable_ace = True
             dealer_sum += new_card_value
             if self.verbose_:
                 print("dealer new card", new_card_value, "dealer_sum=",
@@ -139,6 +156,7 @@ class BlackjackEpisodeGenerator:
                     print("nobody wins!")
 
         return episodes
+
 
 class Blackjack(MDPBase):
     """
